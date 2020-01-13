@@ -23,6 +23,7 @@
 
 use rdx\behatvars\BehatVariablesContext;
 use TestHelpers\OcsApiHelper;
+use Zend\Ldap\Ldap;
 
 require_once 'bootstrap.php';
 
@@ -31,6 +32,30 @@ require_once 'bootstrap.php';
  */
 class FeatureContext extends BehatVariablesContext {
 	use BasicStructure;
+
+	/**
+	 * @var Ldap
+	 */
+	private $ldap;
+	private $ldapBaseDN;
+	private $ldapHost;
+	private $ldapPort;
+	private $ldapAdminUser;
+	private $ldapAdminPassword;
+	private $ldapUsersOU;
+	private $ldapGroupsOU;
+	/**
+	 * @var integer
+	 */
+	private $countUsersCreated;
+	/**
+	 * @var array
+	 */
+	private $toDeleteDNs = [];
+	private $ldapCreatedUsers = [];
+	private $ldapCreatedGroups = [];
+	private $toDeleteLdapConfigs = [];
+	private $oldConfig = [];
 
 	/**
 	 * @return void
