@@ -47,7 +47,7 @@ class FeatureContext extends BehatVariablesContext {
 	/**
 	 * @var integer
 	 */
-	private $countUsersCreated;
+	private $countLDAPUsersCreated;
 	/**
 	 * @var array
 	 */
@@ -96,7 +96,7 @@ class FeatureContext extends BehatVariablesContext {
 	 * @return string
 	 */
 	public function getLdapHostWithoutScheme() {
-		return $this->featureContext->removeSchemeFromUrl($this->ldapHost);
+		return $this->removeSchemeFromUrl($this->ldapHost);
 	}
 
 	/**
