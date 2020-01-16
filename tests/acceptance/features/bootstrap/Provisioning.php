@@ -564,6 +564,8 @@ trait Provisioning {
 	/**
 	 * @AfterScenario
 	 *
+	 * deletes LDAP users|groups created during test
+	 *
 	 * @return void
 	 * @throws Exception
 	 */
@@ -2111,7 +2113,6 @@ trait Provisioning {
 	 */
 	public function groupHasBeenCreatedOnDatabaseBackend($group) {
 		$this->adminCreatesGroupUsingTheProvisioningApi($group);
-		$this->groupShouldExist($group);
 	}
 
 	/**
