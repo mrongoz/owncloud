@@ -48,7 +48,7 @@ class CapabilitiesContext implements Context {
 	 * @return void
 	 */
 	public function checkCapabilitiesResponse(TableNode $formData) {
-		$capabilitiesXML = $this->featureContext->getCapabilitiesXml();
+		$capabilitiesXML = $this->featureContext->appConfigurationContext->getCapabilitiesXml();
 		$assertedSomething = false;
 
 		$this->featureContext->verifyTableNodeColumns($formData, ['value', 'path_to_element', 'capability']);
@@ -57,7 +57,7 @@ class CapabilitiesContext implements Context {
 			$row['value'] = $this->featureContext->substituteInLineCodes($row['value']);
 			Assert::assertEquals(
 				$row['value'] === "EMPTY" ? '' : $row['value'],
-				$this->featureContext->getParameterValueFromXml(
+				$this->featureContext->appConfigurationContext->getParameterValueFromXml(
 					$capabilitiesXML,
 					$row['capability'],
 					$row['path_to_element']

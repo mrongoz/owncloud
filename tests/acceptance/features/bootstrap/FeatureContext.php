@@ -212,6 +212,12 @@ class FeatureContext extends BehatVariablesContext {
 	public $authContext;
 
 	/**
+	 *
+	 * @var AuthContext
+	 */
+	public $appConfigurationContext;
+
+	/**
 	 * BasicStructure constructor.
 	 *
 	 * @param string $baseUrl
@@ -705,6 +711,15 @@ class FeatureContext extends BehatVariablesContext {
 	 */
 	public function getCurrentUser() {
 		return $this->currentUser;
+	}
+
+	/**
+	 * @param string $user
+	 *
+	 * @return string
+	 */
+	public function setCurrentUser($user) {
+		$this->currentUser = $user;
 	}
 
 	/**
@@ -2593,10 +2608,13 @@ class FeatureContext extends BehatVariablesContext {
 		// that calls BasicStructure.php
 		$this->ocsContext = new OCSContext();
 		$this->authContext = new AuthContext();
+		$this->appConfigurationContext = new AppConfigurationContext();
 		$this->ocsContext->before($scope);
 		$this->authContext->setUpScenario($scope);
+		$this->appConfigurationContext->setUpScenario($scope);
 		$environment->registerContext($this->ocsContext);
 		$environment->registerContext($this->authContext);
+		$environment->registerContext($this->appConfigurationContext);
 	}
 
 	/**
@@ -2719,12 +2737,15 @@ class FeatureContext extends BehatVariablesContext {
 	/**
 	 * @return void
 	 */
-	protected function resetAppConfigs() {
+	public function resetAppConfigs() {
 		// Remember the current capabilities
-		$this->theAdministratorGetsCapabilitiesCheckResponse();
-		$this->savedCapabilitiesXml[$this->getBaseUrl()] = $this->getCapabilitiesXml();
+		$this->appConfigurationContext->theAdministratorGetsCapabilitiesCheckResponse();
+		$this->appConfigurationContext->setSavedCapabilitiesXml(
+			$this->getBaseUrl(),
+			$this->appConfigurationContext->getCapabilitiesXml()
+		);
 		// Set the required starting values for testing
-		$this->setCapabilities($this->getCommonSharingConfigs());
+		$this->appConfigurationContext->setCapabilities($this->getCommonSharingConfigs());
 	}
 
 	/**
