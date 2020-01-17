@@ -536,7 +536,7 @@ trait Provisioning {
 	public function createALdapUser($setting) {
 		$ou = "TestUsers";
 		$newDN = 'uid=' . $setting["userid"] . ',ou=' . $ou . ',' . 'dc=owncloud,dc=com';
-		$uidNumber = ($this->countLDAPUsersCreated === null ? 0 : $this->countLDAPUsersCreated) + 1;
+		$uidNumber = count($this->ldapCreatedUsers) + 1;
 		$entry = [];
 		$entry['cn'] = $setting["userid"];
 		$entry['sn'] = $setting["displayName"];
@@ -549,9 +549,8 @@ trait Provisioning {
 		$entry['gidNumber'] = 5000;
 		$entry['uidNumber'] = $uidNumber;
 		$this->ldap->add($newDN, $entry);
-		$this->theLdapUsersHaveBeenReSynced();
-		$this->countLDAPUsersCreated += 1;
 		\array_push($this->ldapCreatedUsers, $setting["userid"]);
+		$this->theLdapUsersHaveBeenReSynced();
 	}
 
 	/**
@@ -614,7 +613,7 @@ trait Provisioning {
 		$client = new Client();
 
 		foreach ($bodies as $body) {
-			if (\getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+			if ($this->getLdapTestStatus()) {
 				$this->createALdapUser($body);
 			} else {
 				// Create a OCS request for creating the user. The request is not sent to the server yet.
@@ -632,7 +631,7 @@ trait Provisioning {
 			}
 		}
 
-		if (\getenv("TEST_EXTERNAL_USER_BACKENDS") !== "true") {
+		if (!$this->getLdapTestStatus()) {
 			$results = HttpRequestHelper::sendBatchRequest($requests, $client);
 			// Retrieve all failures.
 			foreach ($results->getFailures() as $e) {
@@ -1405,7 +1404,7 @@ trait Provisioning {
 	 */
 	public function userHasBeenDeleted($user) {
 		if ($this->userExists($user)) {
-			if (\getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+			if ($this->getLdapTestStatus() === true) {
 				$this->deleteLdapUser($user);
 			} else {
 				$this->deleteTheUserUsingTheProvisioningApi($user);
@@ -2340,9 +2339,11 @@ trait Provisioning {
 	 * @param string $entry
 	 *
 	 * @return void
+	 * @throws Exception
 	 */
 	public function deleteTheLdapEntry($entry) {
 		$this->ldap->delete($entry . "," . $this->ldapBaseDN);
+		$this->theLdapUsersHaveBeenReSynced();
 	}
 
 	/**
@@ -2371,17 +2372,23 @@ trait Provisioning {
 	 * @param null $ou
 	 *
 	 * @return void
+	 * @throws Exception
 	 */
 	public function deleteLdapUser($username, $ou = null) {
+		if (!\in_array($username, $this->ldapCreatedUsers)) {
+			throw new Error(
+				"User " . $username . " is not created using Ldap and do not exists as Ldap User"
+			);
+		}
 		if ($ou === null) {
 			$ou = $this->getLdapUsersOU();
 		}
-		$this->deleteTheLdapEntry("cn=$username,ou=$ou");
+		$entry = "uid=$username,ou=$ou";
+		$this->deleteTheLdapEntry($entry);
 		$key = array_search($username, $this->ldapCreatedUsers);
 		if ($key !== false) {
 			unset($this->ldapCreatedUsers[$key]);
 		}
-		$this->countLDAPUsersCreated -= 1;
 		$this->rememberThatUserIsNotExpectedToExist($username);
 	}
 

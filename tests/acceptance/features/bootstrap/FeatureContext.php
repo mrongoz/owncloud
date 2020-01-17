@@ -45,10 +45,6 @@ class FeatureContext extends BehatVariablesContext {
 	private $ldapUsersOU;
 	private $ldapGroupsOU;
 	/**
-	 * @var integer
-	 */
-	private $countLDAPUsersCreated;
-	/**
 	 * @var array
 	 */
 	private $toDeleteDNs = [];
