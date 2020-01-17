@@ -1052,9 +1052,15 @@ trait Provisioning {
 	public function adminChangesTheDisplayNameOfUserUsingTheProvisioningApi(
 		$user, $displayname
 	) {
-		$this->adminChangesTheDisplayNameOfUserUsingKey(
-			$user, 'displayname', $displayname
-		);
+		if (\getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+			$this->editLdapUserDisplayName(
+				$user, $displayname
+			);
+		} else {
+			$this->adminChangesTheDisplayNameOfUserUsingKey(
+				$user, 'displayname', $displayname
+			);
+		}
 	}
 
 	/**
@@ -1386,7 +1392,11 @@ trait Provisioning {
 	 */
 	public function userHasBeenDeleted($user) {
 		if ($this->userExists($user)) {
-			$this->deleteTheUserUsingTheProvisioningApi($user);
+			if (\getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+				$this->deleteLdapUser($user);
+			} else {
+				$this->deleteTheUserUsingTheProvisioningApi($user);
+			}
 		}
 		$this->userShouldNotExist($user);
 	}
@@ -2299,6 +2309,7 @@ trait Provisioning {
 	 * @param null $ou
 	 *
 	 * @return void
+	 * @throws Exception
 	 */
 	public function removeUserFromLdapGroup($user, $group, $ou = null) {
 		if ($ou === null) {
@@ -2307,6 +2318,7 @@ trait Provisioning {
 		$this->deleteValueFromLdapAttribute(
 			$user, "memberUid", "cn=$group,ou=$ou"
 		);
+		$this->theLdapUsersHaveBeenReSynced();
 	}
 
 	/**
@@ -2323,12 +2335,19 @@ trait Provisioning {
 	 * @param null $ou
 	 *
 	 * @return void
+	 * @throws LdapException
+	 * @throws Exception
 	 */
 	public function deleteLdapGroup($group, $ou = null) {
 		if ($ou === null) {
 			$ou = $this->getLdapGroupsOU();
 		}
 		$this->deleteTheLdapEntry("cn=$group,ou=$ou");
+		$this->theLdapUsersHaveBeenReSynced();
+		$key = array_search($group, $this->ldapCreatedGroups);
+		if ($key !== false) {
+			unset($this->ldapCreatedGroups[$key]);
+		}
 		$this->rememberThatGroupIsNotExpectedToExist($group);
 	}
 
@@ -2343,7 +2362,29 @@ trait Provisioning {
 			$ou = $this->getLdapUsersOU();
 		}
 		$this->deleteTheLdapEntry("cn=$username,ou=$ou");
+		$key = array_search($username, $this->ldapCreatedUsers);
+		if ($key !== false) {
+			unset($this->ldapCreatedUsers[$key]);
+		}
+		$this->countLDAPUsersCreated -= 1;
 		$this->rememberThatUserIsNotExpectedToExist($username);
+	}
+
+	/**
+	 * @param string $user
+	 * @param string $displayName
+	 *
+	 * @return void
+	 * @throws Exception
+	 */
+	public function editLdapUserDisplayName($user, $displayName) {
+		$entry = "uid=" . $user . ",ou=" . $this->getLdapUsersOU();
+		$this->setTheLdapAttributeOfTheEntryTo(
+			'displayname',
+			$entry,
+			$displayName
+		);
+		$this->theLdapUsersHaveBeenReSynced();
 	}
 
 	/**
@@ -2428,6 +2469,22 @@ trait Provisioning {
 	}
 
 	/**
+	 * @param string $group group name
+	 *
+	 * @throws Exception
+	 * @throws LdapException
+	 */
+	public function deleteGroup($group) {
+		if ($this->groupExists($group)) {
+			if (\getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+				$this->deleteLdapGroup($group);
+			} else {
+				$this->deleteTheGroupUsingTheProvisioningApi($group);
+			}
+		}
+	}
+
+	/**
 	 * @Given /^group "([^"]*)" has been deleted$/
 	 *
 	 * @param string $group
@@ -2435,11 +2492,21 @@ trait Provisioning {
 	 * @return void
 	 * @throws \Exception
 	 */
-	public function groupHasBeenDeletedUsingTheProvisioningApi($group) {
-		if ($this->groupExists($group)) {
-			$this->deleteTheGroupUsingTheProvisioningApi($group);
-		}
+	public function groupHasBeenDeleted($group) {
+		$this->deleteGroup($group);
 		$this->groupShouldNotExist($group);
+	}
+
+	/**
+	 * @When /^the administrator deletes group "([^"]*)"$/
+	 *
+	 * @param string $group
+	 *
+	 * @return void
+	 * @throws \Exception
+	 */
+	public function adminDeletesGroup($group) {
+		$this->deleteGroup($group);
 	}
 
 	/**
@@ -2517,6 +2584,9 @@ trait Provisioning {
 	 * @return void
 	 */
 	public function adminRemovesUserFromGroupUsingTheProvisioningApi($user, $group) {
+		if (\getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+			$this->removeUserFromLdapGroup($user, $group);
+		}
 		$this->userRemovesUserFromGroupUsingTheProvisioningApi(
 			$this->getAdminUsername(), $user, $group
 		);
