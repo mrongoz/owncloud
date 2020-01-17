@@ -464,6 +464,11 @@ class OccUsersGroupsContext implements Context {
 		$this->occContext->invokingTheCommand(
 			"group:remove-member -m $username $group"
 		);
+		// only for ldap tests
+		if ($this->featureContext->getLdapTestStatus()) {
+			$this->featureContext->removeUserFromLdapGroup($username, $group);
+			$this->featureContext->theLdapUsersHaveBeenReSynced();
+		}
 	}
 
 	/**

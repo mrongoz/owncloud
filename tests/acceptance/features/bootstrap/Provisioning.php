@@ -1845,6 +1845,19 @@ trait Provisioning {
 	}
 
 	/**
+	 * @param string $group
+	 *
+	 * @return array
+	 */
+	public function getUsersOfALdapGroup($group) {
+		$ou = $this->getLdapGroupsOU();
+		$entry = 'cn=' . $group . ',ou=' . $ou . ',' . 'dc=owncloud,dc=com';
+		$ldapResponse = $this->ldap->getEntry($entry);
+		var_dump($ldapResponse["memberuid"]);
+		return $ldapResponse["memberuid"];
+	}
+
+	/**
 	 * @Then /^user "([^"]*)" should not belong to group "([^"]*)"$/
 	 *
 	 * @param string $user
@@ -2596,6 +2609,7 @@ trait Provisioning {
 					"group:list --output=json"
 				]
 			);
+			var_dump($occResponse);
 			$occGroupList = \json_decode($occResponse["stdOut"], true);
 			if (!\in_array($group, $occGroupList)) {
 				return false;
