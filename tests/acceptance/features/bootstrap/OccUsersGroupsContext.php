@@ -426,8 +426,16 @@ class OccUsersGroupsContext implements Context {
 	 * @throws Exception
 	 */
 	public function theAdministratorGetsTheUsersInGroupInJsonUsingTheOccCommand($groupName) {
-		$this->occContext->invokingTheCommand(
-			"group:list-members $groupName --output=json"
+		$this->featureContext->runOcc(
+			[
+				"group:list-members",
+				$groupName,
+				"--output=json"
+			],
+			$this->featureContext->getAdminUsername(),
+			$this->featureContext->getAdminPassword(),
+			$this->featureContext->getBaseUrl(),
+			$this->featureContext->getOcPath()
 		);
 	}
 
@@ -509,6 +517,7 @@ class OccUsersGroupsContext implements Context {
 	 * @param TableNode $useridTable
 	 *
 	 * @return void
+	 * @throws Exception
 	 */
 	public function theUsersReturnedByTheOccCommandShouldBe(TableNode $useridTable) {
 		$this->featureContext->verifyTableNodeColumns($useridTable, ['uid', 'display name']);

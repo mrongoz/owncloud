@@ -467,6 +467,16 @@ trait Provisioning {
 	}
 
 	/**
+	 * @return bool
+	 */
+	public function getLdapTestStatus() {
+		if (\getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+			return true;
+		}
+		return false;
+	}
+
+	/**
 	 * @param boolean $setDefaultAttributes
 	 * @param array $table
 	 *
@@ -483,6 +493,8 @@ trait Provisioning {
 				if ($body['displayName'] === null) {
 					$body['displayName'] = $this->getDisplayNameForUser('regularuser');
 				}
+			} elseif (!$setDefaultAttributes) {
+				$body["displayName"] = $row["username"];
 			} else {
 				$body['displayName'] = null;
 			}
@@ -494,6 +506,8 @@ trait Provisioning {
 				if ($body['email'] === null) {
 					$body['email'] = $row['username'] . '@owncloud.org';
 				}
+			} elseif ($this->getLdapTestStatus() === true && !$setDefaultAttributes) {
+				$body["email"] = $row["username"] . "@oc.com.np";
 			} else {
 				$body['email'] = null;
 			}
@@ -558,7 +572,6 @@ trait Provisioning {
 		$this->ldap->add($newDN, $entry);
 		\array_push($this->ldapCreatedGroups, $group);
 		$this->theLdapUsersHaveBeenReSynced();
-		\array_push($this->ldapCreatedGroups, $group);
 	}
 
 	/**
@@ -1962,6 +1975,8 @@ trait Provisioning {
 	 * @throws \Exception
 	 */
 	public function userHasBeenAddedToGroup($user, $group) {
+		$this->groupShouldExist($group);
+		$this->userShouldExist($user);
 		$this->addUserToGroup($user, $group, null, true);
 	}
 
@@ -1989,7 +2004,7 @@ trait Provisioning {
 	 */
 	public function addUserToGroup($user, $group, $method = null, $checkResult = false) {
 		$user = $this->getActualUsername($user);
-		if ($method === null && \getenv("TEST_EXTERNAL_USER_BACKENDS") === "true") {
+		if ($method === null && $this->getLdapTestStatus() === true) {
 			//guess yourself
 			$method = "ldap";
 		} elseif ($method === null) {
@@ -2268,6 +2283,7 @@ trait Provisioning {
 		$ldapEntry = $this->ldap->getEntry($entry . "," . $this->ldapBaseDN);
 		Zend\Ldap\Attribute::setAttribute($ldapEntry, $attribute, $value, $append);
 		$this->ldap->update($entry . "," . $this->ldapBaseDN, $ldapEntry);
+		$this->theLdapUsersHaveBeenReSynced();
 	}
 
 	/**
@@ -2281,7 +2297,6 @@ trait Provisioning {
 		if ($ou === null) {
 			$ou = $this->getLdapGroupsOU();
 		}
-
 		$this->setTheLdapAttributeOfTheEntryTo(
 			"memberUid",
 			"cn=$group,ou=$ou",
@@ -2569,7 +2584,15 @@ trait Provisioning {
 			$fullUrl, $this->getAdminUsername(), $this->getAdminPassword()
 		);
 		if ($this->response->getStatusCode() >= 400) {
-			return false;
+			$occResponse = SetupHelper::runOcc(
+				[
+					"group:list --output=json"
+				]
+			);
+			$occGroupList = \json_decode($occResponse["stdOut"], true);
+			if (!\in_array($group, $occGroupList)) {
+				return false;
+			}
 		}
 		return true;
 	}
